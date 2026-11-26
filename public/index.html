@@ -14,7 +14,7 @@
 <style>
 :root {
   --paper: #F5F2EA; --surface: #FFFDF8; --ink: #26302A; --muted: #646C66; --line: #E1DDD2;
-  --green: #2E5A45; --green-ink: #FFFDF8;
+  --green: #2E5A45; --green-ink: #FFFDF8; --line-green: #06C755;
   --sun: #A0524E; --sat: #3F6687;
   --ok-fg: #2E6B4A;  --ok-bg: #E3EEE5;
   --few-fg: #8A5D0E; --few-bg: #F5EAD2;
@@ -82,8 +82,11 @@ header { padding: 0 8px 14px; display: grid; gap: 2px; }
 
 .contact { margin-top: 16px; padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; display: grid; gap: 8px; font-size: .84rem; }
 .contact p { margin: 0; color: var(--muted); }
-.tel { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; border-radius: 12px; background: var(--green); color: var(--green-ink); text-decoration: none; font-weight: 700; font-size: 1.05rem; letter-spacing: .06em; }
-.tel:focus-visible { outline: 3px solid var(--sat); outline-offset: 2px; }
+.btn { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 50px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 1.02rem; letter-spacing: .06em; }
+.btn:focus-visible { outline: 3px solid var(--sat); outline-offset: 2px; }
+.btn svg { width: 22px; height: 22px; flex: none; }
+.line { background: var(--line-green); color: #FFFFFF; }
+.tel { background: var(--surface); color: var(--green); border: 1.5px solid var(--green); }
 .foot { margin-top: 14px; padding: 0 8px; font-size: .7rem; color: var(--muted); display: grid; gap: 2px; }
 .demo { display: inline-block; font-size: .66rem; font-weight: 700; letter-spacing: .08em; color: var(--few-fg); background: var(--few-bg); border-radius: 99px; padding: 0 8px; }
 </style>
@@ -108,7 +111,8 @@ header { padding: 0 8px 14px; display: grid; gap: 2px; }
 
   <section class="contact" aria-label="ご予約方法">
     <p>△ は残りわずかです。ご予約は LINE のトーク、またはお電話で承ります。</p>
-    <a class="tel tnum" href="tel:09093828513">電話する　090-9382-8513</a>
+    <a class="btn line" id="line-btn" href="#" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C6.5 3 2 6.6 2 11c0 3.9 3.5 7.2 8.3 7.9.3.1.8.2.9.5.1.3.1.7 0 1l-.1.9c0 .3-.2 1 .9.5s5.9-3.5 8-6C21.3 14.2 22 12.7 22 11c0-4.4-4.5-8-10-8z"/></svg>LINEでメッセージを送る</a>
+    <a class="btn tel tnum" href="tel:09093828513">電話する　090-9382-8513</a>
   </section>
 
   <div class="foot">
@@ -126,6 +130,8 @@ header { padding: 0 8px 14px; display: grid; gap: 2px; }
   var CONFIG = {
     // Google Apps Script の「公開用」ウェブアプリURL（末尾 /exec）。空のときはデモ表示。
     API_URL: '',
+    // LINE公式アカウントのトークを開くURL（例: https://line.me/R/oaMessage/@xxxx/ または https://lin.ee/xxxx）。空ならボタンを出さない。
+    LINE_URL: '',
     DAYS_AHEAD: 30,                  // 今日から30日先まで
     CACHE_KEY: 'fujiwara-cal:data:v1',
     CACHE_MAX_AGE_MS: 24 * 3600e3,   // 前回データを使ってよい期限
@@ -295,6 +301,10 @@ header { padding: 0 8px 14px; display: grid; gap: 2px; }
   }
 
   // ===== 起動 =====
+  if (CONFIG.LINE_URL) {
+    var lb = document.getElementById('line-btn');
+    lb.href = CONFIG.LINE_URL; lb.hidden = false;
+  }
   document.getElementById('legend').innerHTML = LEGEND.map(function (k) {
     return '<div><span class="mk s-' + k + '" aria-hidden="true">' + STATUS[k].mark + '</span>' + STATUS[k].label + '</div>';
   }).join('');
