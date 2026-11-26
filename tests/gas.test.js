@@ -21,6 +21,7 @@ function makeEnv({ now, activeEmail = '', ownerEmail = 'owner@example.com' }) {
           clearContent() { for (let i = 0; i < nr; i++) rows[r0 - 1 + i] = []; },
         };
       },
+      getLastColumn() { return Math.max(0, ...rows.map(r => (r || []).length)); },
       getLastRow() { let n = rows.length; while (n > 0 && (!rows[n - 1] || rows[n - 1].every(x => x === '' || x == null))) n--; return n; },
       appendRow(r) { rows.length = this.getLastRow(); rows.push(r.slice()); },
       setFrozenRows() {},
@@ -36,7 +37,9 @@ function makeEnv({ now, activeEmail = '', ownerEmail = 'owner@example.com' }) {
     PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] || null, setProperty: (k, v) => { props[k] = v; } }) },
     LockService: { getScriptLock: () => ({ tryLock: () => true, waitLock() {}, releaseLock() {} }) },
     Session: { getActiveUser: () => ({ getEmail: () => env.activeEmail }), getEffectiveUser: () => ({ getEmail: () => ownerEmail }) },
-    Utilities: { formatDate: (d, tz, f) => new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d) },
+    Utilities: { formatDate: (d, tz, f) => f === 'H'
+      ? String(Number(new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: '2-digit', hourCycle: 'h23' }).format(d)))
+      : new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d) },
     ContentService: { MimeType: { JSON: 'json' }, createTextOutput: s => ({ setMimeType: () => ({ body: s }) }) },
     Logger: { log() {} },
   };
@@ -104,24 +107,56 @@ t('日付が進むと過去日は公開されない（年またぎ）', () => {
   assert.strictEqual(env.sheets['予約状況'].getLastRow(), 2);
 });
 
-t('アクセス集計（日別・月別・LINE）', () => {
+t('アクセス集計（日別・月別・LINE・流入元・端末・時間帯・ボタン）', () => {
   const env = makeEnv({ now: '2026-11-25T03:00:00Z', activeEmail: 'owner@example.com' });
-  post(env, { type: 'pv', newDay: 1, newMonth: 1, line: 1 });   // 11/25 A
-  env.now = '2026-11-26T03:00:00Z';
-  post(env, { type: 'pv', newDay: 1, newMonth: 0, line: 1 });   // 11/26 A（今月2回目の日）
-  post(env, { type: 'pv', newDay: 0, newMonth: 0, line: 1 });   // 11/26 A 再訪
-  post(env, { type: 'pv', newDay: 1, newMonth: 1, line: 0 });   // 11/26 B
-  post(env, { type: 'evil', newDay: 1 });                        // 無視
+  // 旧版ページ（src なし、line だけ）
+  post(env, { type: 'pv', newDay: 1, newMonth: 1, line: 1 });                                            // 11/25 12時 A
+  env.now = '2026-11-26T12:30:00Z';                                                                       // 11/26 21:30 JST
+  post(env, { type: 'pv', newDay: 1, newMonth: 0, newEver: 0, src: 'menu', device: 'ios' });             // A
+  post(env, { type: 'pv', newDay: 0, newMonth: 0, newEver: 0, src: 'menu', device: 'ios' });             // A 再訪
+  post(env, { type: 'pv', newDay: 1, newMonth: 1, newEver: 1, src: 'other', device: 'android' });        // B はじめて
+  post(env, { type: 'click', target: 'line' });
+  post(env, { type: 'click', target: 'tel' });
+  post(env, { type: 'click', target: 'line' });
+  post(env, { type: 'click', target: 'xxx' });                                                            // 無視
+  post(env, { type: 'evil', newDay: 1 });                                                                 // 無視
+  post(env, { type: 'pv', newDay: 1, src: '<script>', device: 'toaster' });                               // 不明値は other 扱い
   const a = env.ctx.getAnalytics();
-  assert.strictEqual(a.todayPv, 3);
-  assert.strictEqual(a.todayUv, 2);
-  assert.strictEqual(a.monthPv, 4);
+  assert.strictEqual(a.todayPv, 4);
+  assert.strictEqual(a.todayUv, 3);
+  assert.strictEqual(a.monthPv, 5);
   assert.strictEqual(a.monthUv, 2);
   assert.strictEqual(a.monthLinePv, 3);
   assert.strictEqual(a.monthLineUv, 2);
+  assert.strictEqual(a.monthClickLine, 2);
+  assert.strictEqual(a.monthClickTel, 1);
   assert.strictEqual(a.series.length, 30);
   assert.strictEqual(a.series[29].date, '2026-11-26');
   assert.strictEqual(a.series[28].pv, 1);
+  const L = a.last30;
+  assert.strictEqual(L.pv, 5);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(L.src)), { menu: 2, news: 0, profile: 0, line: 1, other: 2 });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(L.dev)), { ios: 1, android: 1, other: 2 });
+  assert.strictEqual(L.newEver, 1);
+  assert.strictEqual(L.hours[21], 4);
+  assert.strictEqual(L.hours[12], 1);
+  assert.strictEqual(L.weekdays[4], 4); // 木曜
+  assert.strictEqual(L.weekdays[3], 1); // 水曜
+  assert.strictEqual(env.sheets['アクセス'].rows[0].length, 41, '見出しが41列');
+});
+
+t('旧形式（6列）の行が残っていても読める', () => {
+  const env = makeEnv({ now: '2026-11-26T03:00:00Z', activeEmail: 'owner@example.com' });
+  const sh = env.ctx.SpreadsheetApp.getActiveSpreadsheet().insertSheet('アクセス');
+  sh.rows.push(['日付', '閲覧数', '訪問者(推定)', '今月初の訪問者(推定)', 'LINE経由閲覧数', 'LINE経由訪問者(推定)']);
+  sh.rows.push(['2026-11-26', 5, 3, 3, 2, 1]);
+  post(env, { type: 'pv', newDay: 1, newMonth: 1, newEver: 1, src: 'news', device: 'ios' });
+  const a = env.ctx.getAnalytics();
+  assert.strictEqual(a.todayPv, 6);
+  assert.strictEqual(a.todayUv, 4);
+  assert.strictEqual(a.last30.src.news, 1);
+  assert.strictEqual(sh.rows[0].length, 41);
+  assert.strictEqual(sh.rows[0][40], '23時');
 });
 
 console.log(`\n${n} tests passed`);

@@ -36,6 +36,7 @@
   --danger: #E9877E; --danger-bg: #3E2422;
   color-scheme: dark; } }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.7; }
 .wrap { max-width: 480px; margin: 0 auto;
@@ -117,6 +118,7 @@ header { padding: 0 8px 14px; display: grid; gap: 2px; }
 
   <div class="foot">
     <span>日付は日本時間で毎日自動的に更新されます。</span>
+    <span>ページの利用状況を知るため、閲覧数などを匿名で集計しています。お名前など個人を特定する情報は集めていません。</span>
     <span id="optout" hidden>この端末はアクセス集計の対象外です。</span>
   </div>
 </main>
@@ -280,7 +282,32 @@ header { padding: 0 8px 14px; display: grid; gap: 2px; }
   }
 
   // ===== 匿名アクセス集計 =====
-  // 端末ごとに「最後に数えた日・月・時刻」だけを保存。識別子は送らず、サーバーは日別の数だけを数える。
+  // 端末には「最後に数えた日・月・時刻」だけを保存。識別子は送らず、サーバーは日別の回数を足すだけ。
+  var FROM = { 'line': 'line', 'line-menu': 'menu', 'line-news': 'news', 'line-profile': 'profile' };
+  function source() {
+    var f = FROM[params.get('from')];
+    if (f) return f;
+    return /\bLine\//i.test(navigator.userAgent) ? 'line' : 'other';
+  }
+  function device() {
+    var ua = navigator.userAgent;
+    if (/iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'ios';
+    if (/Android/i.test(ua)) return 'android';
+    return 'other';
+  }
+  function trackingOff() {
+    if (isDemo) return true;
+    var st = store(CONFIG.TRACK_KEY) || {};
+    return !!st.optOut;
+  }
+  function send(obj) {
+    var body = JSON.stringify(obj);
+    try {
+      if (navigator.sendBeacon && navigator.sendBeacon(CONFIG.API_URL, new Blob([body], { type: 'text/plain' }))) return;
+      fetch(CONFIG.API_URL, { method: 'POST', mode: 'no-cors', keepalive: true, headers: { 'Content-Type': 'text/plain' }, body: body })
+        .catch(function () {});
+    } catch (e) { /* 集計の失敗は表示に影響させない */ }
+  }
   function track() {
     if (isDemo) return;
     if (params.get('notrack') === '1') store(CONFIG.TRACK_KEY, { optOut: true });
@@ -291,14 +318,23 @@ header { padding: 0 8px 14px; display: grid; gap: 2px; }
     var now = Date.now(), today = D.todayKey(), month = today.slice(0, 7);
     if (st.day === today && st.lastPv && now - st.lastPv < CONFIG.TRACK_DEDUPE_MS) return;
 
-    var isLine = /\bLine\//i.test(navigator.userAgent) || params.get('from') === 'line';
-    var body = JSON.stringify({ type: 'pv', newDay: st.day !== today ? 1 : 0, newMonth: st.month !== month ? 1 : 0, line: isLine ? 1 : 0 });
+    var src = source();
+    send({
+      type: 'pv',
+      newDay: st.day !== today ? 1 : 0,
+      newMonth: st.month !== month ? 1 : 0,
+      newEver: st.day ? 0 : 1,
+      line: src !== 'other' ? 1 : 0,
+      src: src,
+      device: device()
+    });
     store(CONFIG.TRACK_KEY, { day: today, month: month, lastPv: now });
-    try {
-      fetch(CONFIG.API_URL, { method: 'POST', mode: 'no-cors', keepalive: true, headers: { 'Content-Type': 'text/plain' }, body: body })
-        .catch(function () {});
-    } catch (e) { /* 集計の失敗は表示に影響させない */ }
   }
+  function trackClick(target) {
+    if (!trackingOff()) send({ type: 'click', target: target });
+  }
+  document.getElementById('line-btn').addEventListener('click', function () { trackClick('line'); });
+  document.querySelector('a.tel').addEventListener('click', function () { trackClick('tel'); });
 
   // ===== 起動 =====
   if (CONFIG.LINE_URL) {

@@ -23,6 +23,7 @@
   --bar: #8DBEA0; --bar-dim: #3E5446; --grid: #2C322E;
   color-scheme: dark; } }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.6; -webkit-text-size-adjust: 100%; }
 .tnum { font-variant-numeric: tabular-nums; }
 .shell { max-width: 640px; margin: 0 auto; }
@@ -91,6 +92,12 @@ body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(
 .line-share dd { margin: 0; font-weight: 700; }
 .meter { height: 8px; border-radius: 99px; background: var(--grid); overflow: hidden; }
 .meter i { display: block; height: 100%; background: var(--bar); border-radius: 99px; }
+.hbars { display: grid; gap: 10px; }
+.hb { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 8px; font-size: .84rem; }
+.hb .meter { grid-column: 1 / -1; }
+.hb-v { font-weight: 700; }
+.hb-v small { font-weight: 400; color: var(--muted); margin-left: 6px; }
+.panel .fine { margin: 0; }
 .fine { font-size: .74rem; color: var(--muted); line-height: 1.7; }
 table.tv { width: 100%; border-collapse: collapse; font-size: .8rem; }
 table.tv th, table.tv td { padding: 5px 4px; border-bottom: 1px solid var(--line); text-align: right; }
@@ -276,46 +283,77 @@ var INITIAL = <?!= initialJson ?>;
       .getAnalytics();
   }
 
-  function cmp(now, prev, unit) {
-    if (!prev) return '先月の記録なし';
-    return '先月 ' + prev.toLocaleString() + unit;
-  }
-
-  function renderStats(a) {
-    var el = document.getElementById('stats');
-    var lineRate = a.monthPv ? Math.round(a.monthLinePv / a.monthPv * 100) : 0;
-    el.innerHTML =
-      '<div class="tiles">' +
-        tile('今日の閲覧数', a.todayPv, '回', '') +
-        tile('今日の訪問者', a.todayUv, '人', '推定') +
-        tile('今月の閲覧数', a.monthPv, '回', cmp(a.monthPv, a.prevMonthPv, '回')) +
-        tile('今月の訪問者', a.monthUv, '人', cmp(a.monthUv, a.prevMonthUv, '人') ) +
-      '</div>' +
-      '<div class="panel"><h2>過去30日間の閲覧数</h2><div class="readout tnum" id="readout"></div>' +
-        '<div id="chart"></div>' +
-        '<details><summary>表で見る</summary>' + table(a.series) + '</details></div>' +
-      '<div class="panel"><h2>LINE経由（今月）</h2>' +
-        '<dl class="line-share tnum"><dt>閲覧数</dt><dd>' + a.monthLinePv.toLocaleString() + ' 回（全体の ' + lineRate + '%）</dd>' +
-        '<dt>訪問者</dt><dd>' + a.monthLineUv.toLocaleString() + ' 人（推定）</dd></dl>' +
-        '<div class="meter" role="img" aria-label="LINE経由の割合 ' + lineRate + '%"><i style="width:' + lineRate + '%"></i></div></div>' +
-      '<p class="fine">訪問者数は、端末ごとに「その日・その月に初めて開いたか」だけで数えた推定値です。氏名や端末を特定できる情報は記録していません。同じ端末で10分以内に開き直した分は閲覧数に含めません。院長ご自身の閲覧を除くには、ご自分のスマートフォンで公開ページのURLの末尾に <b>?notrack=1</b> を付けて一度開いてください。</p>';
-    el.hidden = false;
-    drawChart(a.series);
-  }
+  function cmp(prev, unit) { return prev ? '先月 ' + prev.toLocaleString() + unit : '先月の記録なし'; }
+  function pct(a, b) { return b ? Math.round(a / b * 100) : 0; }
+  function argmax(arr) { var m = 0; arr.forEach(function (v, i) { if (v > arr[m]) m = i; }); return m; }
+  function md(k) { var a = k.split('-').map(Number); return a[1] + '/' + a[2]; }
+  function wd(k) { var a = k.split('-').map(Number); return WD[new Date(Date.UTC(a[0], a[1] - 1, a[2])).getUTCDay()]; }
+  function panel(title, body) { return '<div class="panel"><h2>' + title + '</h2>' + body + '</div>'; }
 
   function tile(lbl, n, unit, sub) {
     return '<div class="tile"><span class="lbl">' + lbl + '</span><span class="num tnum">' + (n || 0).toLocaleString() + '<small>' + unit + '</small></span>' +
       (sub ? '<span class="cmp">' + sub + '</span>' : '') + '</div>';
   }
 
-  function md(k) { var a = k.split('-').map(Number); return a[1] + '/' + a[2]; }
-  function wd(k) { var a = k.split('-').map(Number); return WD[new Date(Date.UTC(a[0], a[1] - 1, a[2])).getUTCDay()]; }
+  function hbars(items, total, unit) {
+    return '<div class="hbars">' + items.map(function (it) {
+      var p = pct(it[1], total);
+      return '<div class="hb"><span>' + it[0] + '</span><span class="hb-v tnum">' + it[1].toLocaleString() + unit + '<small>' + p + '%</small></span>' +
+        '<div class="meter" aria-hidden="true"><i style="width:' + p + '%"></i></div></div>';
+    }).join('') + '</div>';
+  }
 
   function table(series) {
     return '<table class="tv tnum"><thead><tr><th>日付</th><th>閲覧数</th><th>訪問者</th></tr></thead><tbody>' +
       series.slice().reverse().map(function (s) {
         return '<tr><td>' + md(s.date) + '（' + wd(s.date) + '）</td><td>' + s.pv + '</td><td>' + s.uv + '</td></tr>';
       }).join('') + '</tbody></table>';
+  }
+
+  function renderStats(a) {
+    var el = document.getElementById('stats');
+    var L = a.last30;
+    var clicks = a.monthClickLine + a.monthClickTel;
+    var devTotal = L.dev.ios + L.dev.android + L.dev.other;
+    var repeat = Math.max(0, L.uv - L.newEver);
+    el.innerHTML =
+      '<div class="tiles">' +
+        tile('今日の閲覧数', a.todayPv, '回', '') +
+        tile('今日の訪問者', a.todayUv, '人', '推定') +
+        tile('今月の閲覧数', a.monthPv, '回', cmp(a.prevMonthPv, '回')) +
+        tile('今月の訪問者', a.monthUv, '人', cmp(a.prevMonthUv, '人')) +
+      '</div>' +
+      panel('過去30日間の閲覧数', '<div class="readout tnum" id="readout"></div><div id="chart"></div><details><summary>表で見る</summary>' + table(a.series) + '</details>') +
+      panel('連絡ボタンが押された回数（今月）',
+        '<div class="tiles">' + tile('LINEでメッセージ', a.monthClickLine, '回', '') + tile('電話する', a.monthClickTel, '回', '') + '</div>' +
+        '<p class="fine">閲覧100回あたり <b>' + (a.monthPv ? Math.round(clicks / a.monthPv * 100) : 0) + '回</b> 押されています。押したあと実際に連絡したかどうかまでは分かりません。</p>') +
+      panel('よく見られる時間帯（過去30日）', '<div class="readout tnum" id="readout-h"></div><div id="chart-h"></div>') +
+      panel('曜日別の閲覧数（過去30日）', '<div class="readout tnum" id="readout-w"></div><div id="chart-w"></div>') +
+      panel('どこから開かれたか（過去30日）',
+        hbars([['LINE リッチメニュー', L.src.menu], ['LINE 配信メッセージ', L.src.news], ['LINE プロフィール', L.src.profile],
+          ['LINE（場所の区別なし）', L.src.line], ['LINE以外', L.src.other]], L.pv, '回') +
+        '<p class="fine">LINE 内のリンクごとに URL の末尾を変えると区別できます：リッチメニューは <b>?from=line-menu</b>、配信メッセージは <b>?from=line-news</b>、プロフィールは <b>?from=line-profile</b>。</p>') +
+      panel('はじめて／くり返し（過去30日・推定）',
+        hbars([['はじめて見た人', L.newEver], ['以前にも見た人', repeat]], L.uv, '人')) +
+      panel('端末（過去30日・訪問者）',
+        hbars([['iPhone', L.dev.ios], ['Android', L.dev.android], ['その他（パソコンなど）', L.dev.other]], devTotal, '人')) +
+      panel('LINE経由（今月）',
+        hbars([['LINE経由の閲覧', a.monthLinePv]], a.monthPv, '回') +
+        '<p class="fine">LINE経由の訪問者（推定）：' + a.monthLineUv.toLocaleString() + '人</p>') +
+      '<p class="fine">数字はすべて匿名の回数です。訪問者数は、端末ごとに「その日・その月・はじめて開いたか」だけで数えた推定値で、氏名や端末を特定できる情報は記録していません。同じ端末で10分以内に開き直した分は閲覧数に含めません。院長ご自身の閲覧を除くには、ご自分のスマートフォンで公開ページの URL の末尾に <b>?notrack=1</b> を付けて一度開いてください。</p>';
+    el.hidden = false;
+
+    var n = a.series.length;
+    drawBars('chart', 'readout', a.series.map(function (s, i) {
+      return { short: md(s.date), value: s.pv,
+        tip: md(s.date) + '（' + wd(s.date) + '）' + (i === n - 1 ? ' 今日' : '') + '　閲覧数 <b>' + s.pv + '</b> 回 ・ 訪問者 <b>' + s.uv + '</b> 人' };
+    }), function (i) { return i % 7 === (n - 1) % 7; }, n - 1, '過去30日間の日別閲覧数');
+    drawBars('chart-h', 'readout-h', L.hours.map(function (v, h) {
+      return { short: h + '時', value: v, tip: h + '時台　閲覧数 <b>' + v + '</b> 回' };
+    }), function (i) { return i % 6 === 0 || i === 23; }, argmax(L.hours), '時間帯別の閲覧数');
+    drawBars('chart-w', 'readout-w', WD.map(function (w, i) {
+      return { short: w, value: L.weekdays[i], tip: w + '曜日　閲覧数 <b>' + L.weekdays[i] + '</b> 回' };
+    }), function () { return true; }, argmax(L.weekdays), '曜日別の閲覧数');
   }
 
   function niceMax(v) {
@@ -325,45 +363,41 @@ var INITIAL = <?!= initialJson ?>;
     return n * p;
   }
 
-  function drawChart(series) {
-    var W = 320, H = 170, L = 28, R = 6, T = 8, B = 22;
-    var max = niceMax(Math.max.apply(null, series.map(function (s) { return s.pv; })));
-    var n = series.length, slot = (W - L - R) / n, bw = Math.max(3, slot - 2);
+  // 1系列の棒グラフ。棒をタップ／ホバーすると上の行に数値が出る
+  function drawBars(boxId, readoutId, items, showLabel, active, aria) {
+    var W = 320, H = 150, L = 28, R = 6, T = 8, B = 22;
+    var max = niceMax(Math.max.apply(null, items.map(function (s) { return s.value; })));
+    var n = items.length, slot = (W - L - R) / n, bw = Math.max(3, Math.min(slot - 2, 26));
     var y = function (v) { return T + (H - T - B) * (1 - v / max); };
-    var svg = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="過去30日間の日別閲覧数の棒グラフ">';
+    var svg = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + aria + 'の棒グラフ">';
     [0, max / 2, max].forEach(function (v) {
       svg += '<line class="gl" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '"/>' +
         '<text x="' + (L - 5) + '" y="' + (y(v) + 3) + '" text-anchor="end">' + (v % 1 ? v.toFixed(1) : v) + '</text>';
     });
-    series.forEach(function (s, i) {
-      var x = L + i * slot + (slot - bw) / 2, top = y(s.pv), base = y(0), h = base - top;
-      var r = Math.min(2, bw / 2, h);
+    items.forEach(function (s, i) {
+      var x = L + i * slot + (slot - bw) / 2, top = y(s.value), base = y(0), h = base - top;
+      var r = Math.min(3, bw / 2, h);
       if (h > 0) {
-        svg += '<path class="bar' + (i === n - 1 ? ' on' : '') + '" data-i="' + i + '" d="M' + x + ' ' + base + 'V' + (top + r) +
+        svg += '<path class="bar" data-i="' + i + '" d="M' + x + ' ' + base + 'V' + (top + r) +
           'Q' + x + ' ' + top + ' ' + (x + r) + ' ' + top + 'H' + (x + bw - r) + 'Q' + (x + bw) + ' ' + top + ' ' + (x + bw) + ' ' + (top + r) + 'V' + base + 'Z"/>';
       }
-      if (i === 0 || i === n - 1 || i % 7 === (n - 1) % 7) {
-        svg += '<text x="' + (x + bw / 2) + '" y="' + (H - 6) + '" text-anchor="middle">' + md(s.date) + '</text>';
+      if (showLabel(i)) {
+        var last = i === n - 1 && n > 7; // 右端のラベルははみ出さないよう右揃え
+        svg += '<text x="' + (last ? x + bw : x + bw / 2) + '" y="' + (H - 6) + '" text-anchor="' + (last ? 'end' : 'middle') + '">' + s.short + '</text>';
       }
-      // 当たり判定（棒より広い）
       svg += '<rect data-i="' + i + '" x="' + (L + i * slot) + '" y="' + T + '" width="' + slot + '" height="' + (H - T - B) + '" fill="transparent"/>';
     });
     svg += '</svg>';
-    var box = document.getElementById('chart');
+    var box = document.getElementById(boxId);
     box.innerHTML = svg;
-
     function show(i) {
-      var s = series[i];
-      document.getElementById('readout').innerHTML = md(s.date) + '（' + wd(s.date) + '）' + (i === n - 1 ? ' 今日' : '') +
-        '　閲覧数 <b>' + s.pv + '</b> 回 ・ 訪問者 <b>' + s.uv + '</b> 人';
+      document.getElementById(readoutId).innerHTML = items[i].tip;
       Array.prototype.forEach.call(box.querySelectorAll('.bar'), function (b) { b.classList.toggle('on', +b.getAttribute('data-i') === i); });
     }
-    function pick(e) {
-      var t = e.target.closest('[data-i]'); if (t) show(+t.getAttribute('data-i'));
-    }
+    function pick(e) { var t = e.target.closest('[data-i]'); if (t) show(+t.getAttribute('data-i')); }
     box.addEventListener('pointermove', pick);
     box.addEventListener('pointerdown', pick);
-    show(n - 1);
+    show(active);
   }
 
   /* ---------- 起動 ---------- */
