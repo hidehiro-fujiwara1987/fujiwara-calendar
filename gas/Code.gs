@@ -18,7 +18,7 @@ var CACHE_KEY = 'status-v1';
 var CACHE_SEC = 600;
 
 // 公開ページの URL（GitHub Pages など）。管理画面の「公開ページを見る」に使います。
-var PUBLIC_PAGE_URL = '';
+var PUBLIC_PAGE_URL = 'https://hidehiro-fujiwara1987.github.io/fujiwara-calendar/';
 
 // 状態キー ⇔ シート上の表記。○は「行なし」で表す。
 var STATUS_MARK = { few: '△', full: '×', am: '午前', pm: '午後', off: '休' };
