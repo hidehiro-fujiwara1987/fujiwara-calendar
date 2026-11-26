@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>予約状況｜藤原整体院</title>
+<meta name="description" content="藤原整体院のご予約の空き状況（今日から30日先まで）">
+<meta name="theme-color" content="#F5F2EA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#191D1A" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- 院名だけ明朝。text= で必要な文字だけ読み込むので軽い -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600&text=%E8%97%A4%E5%8E%9F%E6%95%B4%E4%BD%93%E9%99%A2%E5%B9%B4%E6%9C%88%E3%80%9C0123456789/&display=swap">
+<style>
+:root {
+  --paper: #F5F2EA; --surface: #FFFDF8; --ink: #26302A; --muted: #646C66; --line: #E1DDD2;
+  --green: #2E5A45; --green-ink: #FFFDF8;
+  --sun: #A0524E; --sat: #3F6687;
+  --ok-fg: #2E6B4A;  --ok-bg: #E3EEE5;
+  --few-fg: #8A5D0E; --few-bg: #F5EAD2;
+  --full-fg: #8A4848; --full-bg: #F1E2DF;
+  --half-fg: #2D5872; --half-bg: #E1EBF1;
+  --off-fg: #6E6F69; --off-bg: #EAE8E1;
+  --load-bg: #EEEBE3;
+  --danger: #A43F38; --danger-bg: #F7E4E1;
+  --font-display: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --font-body: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --paper: #191D1A; --surface: #212622; --ink: #E8E5DC; --muted: #9DA59F; --line: #343B36;
+  --green: #8DBEA0; --green-ink: #15201A;
+  --sun: #D9908A; --sat: #8FB2D1;
+  --ok-fg: #9ED2B1; --ok-bg: #233629; --few-fg: #E2BC6E; --few-bg: #3A3020;
+  --full-fg: #DFA09A; --full-bg: #3D2928; --half-fg: #9FC3DA; --half-bg: #22313B;
+  --off-fg: #A6A79F; --off-bg: #2C302C; --load-bg: #262B27;
+  --danger: #E9877E; --danger-bg: #3E2422;
+  color-scheme: dark; } }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.7; }
+.wrap { max-width: 480px; margin: 0 auto;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 24px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 32px);
+  padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); }
+.tnum { font-variant-numeric: tabular-nums; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+header { padding: 0 8px 14px; display: grid; gap: 2px; }
+.clinic { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 1.5rem; letter-spacing: .14em; color: var(--green); line-height: 1.4; }
+.sub { font-size: .82rem; letter-spacing: .2em; color: var(--muted); }
+.meta { margin-top: 10px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; font-size: .76rem; color: var(--muted); }
+.meta strong { color: var(--ink); font-weight: 600; font-size: .9rem; }
+
+.legend { padding: 10px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 4px; font-size: .74rem; color: var(--muted); }
+.legend div { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.mk { display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 4px; border-radius: 6px; font-weight: 700; font-size: .8rem; line-height: 1; }
+.s-ok   { color: var(--ok-fg);   background: var(--ok-bg); }
+.s-few  { color: var(--few-fg);  background: var(--few-bg); }
+.s-full { color: var(--full-fg); background: var(--full-bg); }
+.s-am, .s-pm { color: var(--half-fg); background: var(--half-bg); }
+.s-off  { color: var(--off-fg);  background: var(--off-bg); }
+.s-unknown { color: var(--muted); background: var(--load-bg); }
+
+.notice { margin-top: 12px; padding: 10px 14px; border-radius: 12px; font-size: .8rem; line-height: 1.6; background: var(--off-bg); color: var(--ink); }
+.notice.error { background: var(--danger-bg); color: var(--danger); }
+.notice button { margin-top: 8px; font: inherit; font-weight: 700; border: 0; border-radius: 8px; padding: 6px 14px; background: var(--danger); color: var(--surface); cursor: pointer; }
+
+.cal { margin-top: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 8px 12px; }
+.grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.dow { text-align: center; font-size: .72rem; color: var(--muted); padding-bottom: 2px; }
+.dow.sun { color: var(--sun); } .dow.sat { color: var(--sat); }
+.cell { border-radius: 10px; min-height: 62px; display: grid; grid-template-rows: auto 1fr; justify-items: center; padding: 5px 0 6px; position: relative; }
+.cell.blank { background: transparent; }
+.cell .d { font-size: .8rem; line-height: 1.15; color: var(--ink); text-align: center; }
+.cell .d small { display: block; font-size: .6rem; color: var(--green); font-weight: 700; }
+.cell.sun .d { color: var(--sun); } .cell.sat .d { color: var(--sat); }
+.cell .st { align-self: center; font-weight: 700; font-size: 1.15rem; line-height: 1; }
+.cell .st.txt { font-size: .74rem; }
+.cell.loading { background: var(--load-bg); }
+.cell.loading .st { width: 14px; height: 3px; border-radius: 2px; background: var(--line); }
+.cell.today { outline: 2px solid var(--green); outline-offset: -2px; }
+.cell .d small.tg { color: var(--green-ink); background: var(--green); border-radius: 99px; padding: 0 5px; margin-bottom: 1px; }
+
+.contact { margin-top: 16px; padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; display: grid; gap: 8px; font-size: .84rem; }
+.contact p { margin: 0; color: var(--muted); }
+.tel { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; border-radius: 12px; background: var(--green); color: var(--green-ink); text-decoration: none; font-weight: 700; font-size: 1.05rem; letter-spacing: .06em; }
+.tel:focus-visible { outline: 3px solid var(--sat); outline-offset: 2px; }
+.foot { margin-top: 14px; padding: 0 8px; font-size: .7rem; color: var(--muted); display: grid; gap: 2px; }
+.demo { display: inline-block; font-size: .66rem; font-weight: 700; letter-spacing: .08em; color: var(--few-fg); background: var(--few-bg); border-radius: 99px; padding: 0 8px; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <h1 class="clinic">藤原整体院</h1>
+    <div class="sub">ご予約の空き状況 <span class="demo" id="demo" hidden>デモ表示（仮データ）</span></div>
+    <div class="meta">
+      <span>表示期間 <strong class="tnum" id="range"></strong></span>
+      <span id="updated"></span>
+    </div>
+  </header>
+
+  <div class="legend" id="legend"></div>
+  <div class="notice" id="notice" role="status" hidden></div>
+
+  <section class="cal" aria-label="予約状況カレンダー">
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section class="contact" aria-label="ご予約方法">
+    <p>△ は残りわずかです。ご予約は LINE のトーク、またはお電話で承ります。</p>
+    <a class="tel tnum" href="tel:09093828513">電話する　090-9382-8513</a>
+  </section>
+
+  <div class="foot">
+    <span>日付は日本時間で毎日自動的に更新されます。</span>
+    <span id="optout" hidden>この端末はアクセス集計の対象外です。</span>
+  </div>
+</main>
+
+<script src="dates.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ===== 設定 =====
+  var CONFIG = {
+    // Google Apps Script の「公開用」ウェブアプリURL（末尾 /exec）。空のときはデモ表示。
+    API_URL: '',
+    DAYS_AHEAD: 30,                  // 今日から30日先まで
+    CACHE_KEY: 'fujiwara-cal:data:v1',
+    CACHE_MAX_AGE_MS: 24 * 3600e3,   // 前回データを使ってよい期限
+    TIMEOUT_MS: 12000,
+    TRACK_KEY: 'fujiwara-cal:visit:v1',
+    TRACK_DEDUPE_MS: 10 * 60e3       // 10分以内の再表示は閲覧数に数えない
+  };
+
+  var STATUS = {
+    ok:   { mark: '○',   label: '予約可能' },
+    few:  { mark: '△',   label: '残りわずか' },
+    full: { mark: '×',   label: '予約満了' },
+    am:   { mark: '午前', label: '午前のみ' },
+    pm:   { mark: '午後', label: '午後のみ' },
+    off:  { mark: '休',   label: '休業日' }
+  };
+  var LEGEND = ['ok', 'few', 'full', 'am', 'pm', 'off'];
+
+  var D = window.FujiwaraDates;
+  var params = new URLSearchParams(location.search);
+  var isDemo = !CONFIG.API_URL || params.has('demo');
+
+  var state = { today: D.todayKey(), days: null, updatedAt: null, phase: 'loading', lastFetch: 0 };
+
+  function store(key, val) {
+    try {
+      if (val === undefined) return JSON.parse(localStorage.getItem(key) || 'null');
+      localStorage.setItem(key, JSON.stringify(val));
+    } catch (e) { return null; }
+  }
+
+  function fmtUpdated(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    if (isNaN(d)) return '';
+    return '最終更新 ' + new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(d);
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  // ===== 描画 =====
+  function render() {
+    var days = D.buildDays(state.today, CONFIG.DAYS_AHEAD + 1);
+    var first = days[0], last = days[days.length - 1];
+    document.getElementById('range').textContent = first.m + '/' + first.d + ' 〜 ' + last.m + '/' + last.d;
+    document.getElementById('updated').textContent = fmtUpdated(state.updatedAt);
+
+    var grid = document.getElementById('grid');
+    if (state.phase === 'failed') { grid.parentNode.hidden = true; return; }
+    grid.parentNode.hidden = false;
+
+    var h = D.WEEKDAYS.map(function (w, i) {
+      return '<div class="dow ' + (i === 0 ? 'sun' : i === 6 ? 'sat' : '') + '" aria-hidden="true">' + w + '</div>';
+    }).join('');
+    for (var b = 0; b < first.w; b++) h += '<div class="cell blank" aria-hidden="true"></div>';
+
+    days.forEach(function (d, idx) {
+      var wcls = d.w === 0 ? ' sun' : d.w === 6 ? ' sat' : '';
+      var monthMark = idx === 0 ? '<small class="tg">今日</small>' : d.d === 1 ? '<small>' + d.m + '月</small>' : '';
+      if (!state.days) {
+        h += '<div class="cell loading' + wcls + (idx === 0 ? ' today' : '') + '"><span class="d tnum">' + monthMark + d.d + '</span><span class="st"></span></div>';
+        return;
+      }
+      // 記録がない日は ○（予約可能）
+      var key = state.days[d.key] || 'ok';
+      var s = STATUS[key];
+      var cls = s ? 's-' + key : 's-unknown';
+      var mark = s ? s.mark : '—';
+      var label = s ? s.label : 'お問い合わせください';
+      h += '<div class="cell ' + cls + wcls + (idx === 0 ? ' today' : '') + '">' +
+        '<span class="d tnum" aria-hidden="true">' + monthMark + d.d + '</span>' +
+        '<span class="st' + (mark.length > 1 ? ' txt' : '') + '" aria-hidden="true">' + esc(mark) + '</span>' +
+        '<span class="sr">' + d.m + '月' + d.d + '日 ' + d.wd + '曜日 ' + label + (idx === 0 ? '（今日）' : '') + '</span></div>';
+    });
+    var tail = (7 - ((first.w + days.length) % 7)) % 7;
+    for (var t = 0; t < tail; t++) h += '<div class="cell blank" aria-hidden="true"></div>';
+    grid.innerHTML = h;
+  }
+
+  function notice(kind, html) {
+    var el = document.getElementById('notice');
+    if (!kind) { el.hidden = true; return; }
+    el.className = 'notice' + (kind === 'error' ? ' error' : '');
+    el.innerHTML = html;
+    el.hidden = false;
+    var btn = el.querySelector('button');
+    if (btn) btn.addEventListener('click', function () { load(true); });
+  }
+
+  // ===== データ取得 =====
+  function applyData(data) {
+    var days = {};
+    Object.keys(data.days || {}).forEach(function (k) { if (D.isKey(k)) days[k] = data.days[k]; });
+    state.days = days;
+    state.updatedAt = data.updatedAt || null;
+    // 端末の時計がずれていても、サーバー（日本時間）の今日を優先
+    if (D.isKey(data.today)) state.today = data.today;
+  }
+
+  function demoData() {
+    var t = D.todayKey(), o = {};
+    [[0, 'few'], [1, 'full'], [3, 'am'], [6, 'few'], [9, 'pm'], [12, 'full'], [13, 'full'], [17, 'off'], [22, 'am'], [27, 'few']]
+      .forEach(function (p) { o[D.addDays(t, p[0])] = p[1]; });
+    return { today: t, updatedAt: new Date().toISOString(), days: o };
+  }
+
+  function fetchWithTimeout(url, ms) {
+    var ctl = 'AbortController' in window ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctl) ctl.abort(); }, ms);
+    return fetch(url, { cache: 'no-store', signal: ctl ? ctl.signal : undefined })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .finally(function () { clearTimeout(timer); });
+  }
+
+  function load(isRetry) {
+    if (isDemo) {
+      applyData(demoData()); state.phase = 'ready';
+      document.getElementById('demo').hidden = false;
+      render(); return Promise.resolve();
+    }
+    if (isRetry) { state.phase = 'loading'; notice(null); render(); }
+    var url = CONFIG.API_URL + (CONFIG.API_URL.indexOf('?') < 0 ? '?' : '&') + 't=' + Date.now();
+    return fetchWithTimeout(url, CONFIG.TIMEOUT_MS).then(function (data) {
+      if (!data || data.ok !== true) throw new Error('bad data');
+      applyData(data);
+      state.phase = 'ready'; state.lastFetch = Date.now();
+      store(CONFIG.CACHE_KEY, { savedAt: Date.now(), data: data });
+      notice(null); render();
+    }).catch(function () {
+      if (state.days) {
+        notice('info', '通信が不安定なため、' + esc(fmtUpdated(state.updatedAt).replace('最終更新 ', '')) + ' 時点の情報を表示しています。最新の状況はお電話でもご確認いただけます。');
+      } else {
+        state.phase = 'failed'; render();
+        notice('error', '空き状況を読み込めませんでした。通信状況をご確認のうえ、もう一度お試しください。<br><button type="button">もう一度読み込む</button>');
+      }
+    });
+  }
+
+  // 前回データがあれば即表示（読み込み待ちの間も見られる）
+  function showCached() {
+    if (isDemo) return;
+    var c = store(CONFIG.CACHE_KEY);
+    if (!c || !c.data || Date.now() - c.savedAt > CONFIG.CACHE_MAX_AGE_MS) return;
+    applyData(c.data);
+    state.today = D.todayKey(); // 前回の「今日」は使わない
+    state.phase = 'ready';
+  }
+
+  // ===== 匿名アクセス集計 =====
+  // 端末ごとに「最後に数えた日・月・時刻」だけを保存。識別子は送らず、サーバーは日別の数だけを数える。
+  function track() {
+    if (isDemo) return;
+    if (params.get('notrack') === '1') store(CONFIG.TRACK_KEY, { optOut: true });
+    if (params.get('notrack') === '0') store(CONFIG.TRACK_KEY, {});
+    var st = store(CONFIG.TRACK_KEY) || {};
+    if (st.optOut) { document.getElementById('optout').hidden = false; return; }
+
+    var now = Date.now(), today = D.todayKey(), month = today.slice(0, 7);
+    if (st.day === today && st.lastPv && now - st.lastPv < CONFIG.TRACK_DEDUPE_MS) return;
+
+    var isLine = /\bLine\//i.test(navigator.userAgent) || params.get('from') === 'line';
+    var body = JSON.stringify({ type: 'pv', newDay: st.day !== today ? 1 : 0, newMonth: st.month !== month ? 1 : 0, line: isLine ? 1 : 0 });
+    store(CONFIG.TRACK_KEY, { day: today, month: month, lastPv: now });
+    try {
+      fetch(CONFIG.API_URL, { method: 'POST', mode: 'no-cors', keepalive: true, headers: { 'Content-Type': 'text/plain' }, body: body })
+        .catch(function () {});
+    } catch (e) { /* 集計の失敗は表示に影響させない */ }
+  }
+
+  // ===== 起動 =====
+  document.getElementById('legend').innerHTML = LEGEND.map(function (k) {
+    return '<div><span class="mk s-' + k + '" aria-hidden="true">' + STATUS[k].mark + '</span>' + STATUS[k].label + '</div>';
+  }).join('');
+
+  showCached();
+  render();
+  load(false).then(function () { setTimeout(track, 300); });
+
+  // 開いたまま日付が変わったら自動で進める／戻ってきたら最新化
+  setInterval(function () {
+    var t = D.todayKey();
+    if (t > state.today) { state.today = t; render(); load(false); }
+  }, 60e3);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible' && Date.now() - state.lastFetch > 5 * 60e3) {
+      state.today = D.todayKey(); render(); load(false);
+    }
+  });
+})();
+</script>
+</body>
+</html>

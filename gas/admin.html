@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<style>
+:root {
+  --paper: #F5F2EA; --surface: #FFFDF8; --ink: #26302A; --muted: #646C66; --line: #E1DDD2;
+  --green: #2E5A45; --green-ink: #FFFDF8; --green-soft: #E4ECE5;
+  --sun: #A0524E; --sat: #3F6687;
+  --ok-fg: #2E6B4A; --few-fg: #8A5D0E; --few-bg: #F5EAD2; --full-fg: #8A4848; --half-fg: #2D5872; --off-fg: #6E6F69;
+  --danger: #A43F38; --danger-bg: #F7E4E1;
+  --bar: #2E5A45; --bar-dim: #B9CBBE; --grid: #E8E4DA;
+  --font: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+  --font-display: "Hiragino Mincho ProN", "Yu Mincho", serif;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --paper: #191D1A; --surface: #212622; --ink: #E8E5DC; --muted: #9DA59F; --line: #343B36;
+  --green: #8DBEA0; --green-ink: #15201A; --green-soft: #26362C;
+  --sun: #D9908A; --sat: #8FB2D1;
+  --ok-fg: #7FC29A; --few-fg: #D9AE58; --few-bg: #3A3020; --full-fg: #D58D86; --half-fg: #86B3CF; --off-fg: #9C9D96;
+  --danger: #E9877E; --danger-bg: #3E2422;
+  --bar: #8DBEA0; --bar-dim: #3E5446; --grid: #2C322E;
+  color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.6; -webkit-text-size-adjust: 100%; }
+.tnum { font-variant-numeric: tabular-nums; }
+.shell { max-width: 640px; margin: 0 auto; }
+
+/* 上部バー */
+.top { position: sticky; top: 0; z-index: 5; background: var(--green); color: var(--green-ink);
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); }
+.top-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.top h1 { margin: 0; font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; letter-spacing: .08em; }
+.save { font-size: .74rem; border-radius: 99px; padding: 2px 10px; background: rgba(255,255,255,.16); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.save::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .8; }
+.save.saving::before { animation: blink 1s infinite; }
+.save.error { background: var(--danger-bg); color: var(--danger); }
+@keyframes blink { 50% { opacity: .2; } }
+.tabs { display: flex; gap: 4px; margin-top: 10px; }
+.tabs button { flex: 1; font: inherit; font-size: .86rem; font-weight: 700; color: var(--green-ink); opacity: .7; background: transparent; border: 0; border-bottom: 3px solid transparent; padding: 8px 0 7px; cursor: pointer; }
+.tabs button[aria-selected="true"] { opacity: 1; border-bottom-color: var(--green-ink); }
+.tabs button:focus-visible { outline: 2px solid var(--green-ink); outline-offset: -2px; }
+
+.err { background: var(--danger-bg); color: var(--danger); font-size: .82rem; padding: 12px 16px; display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; border-bottom: 1px solid var(--line); }
+.err button, .btn { font: inherit; font-weight: 700; border: 0; border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+.err button { background: var(--danger); color: var(--surface); }
+.hint { padding: 12px 16px; font-size: .8rem; color: var(--muted); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.hint a { color: var(--green); font-weight: 700; }
+
+/* 予約状況リスト */
+.month { position: sticky; top: var(--top-h, 96px); z-index: 2; background: var(--paper); padding: 10px 16px 6px; font-family: var(--font-display); font-weight: 600; font-size: .95rem; letter-spacing: .06em; border-bottom: 1px solid var(--line); }
+.row { display: grid; grid-template-columns: 58px 1fr; gap: 10px; align-items: center; padding: 8px max(12px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); border-bottom: 1px solid var(--line); background: var(--surface); }
+.row.changed { background: color-mix(in srgb, var(--surface) 70%, var(--few-bg)); }
+.date { font-size: 1rem; font-weight: 600; line-height: 1.2; position: relative; }
+.date span { display: block; font-size: .7rem; font-weight: 400; color: var(--muted); }
+.row.sun .date span { color: var(--sun); } .row.sat .date span { color: var(--sat); }
+.date .tag { display: inline-block; font-size: .6rem; color: var(--green-ink); background: var(--green); border-radius: 99px; padding: 0 6px; margin-top: 2px; }
+.row.pending .date::after { content: ""; position: absolute; left: -10px; top: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--danger); }
+.seg { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; }
+.seg button { font: inherit; font-size: .86rem; font-weight: 700; height: 42px; border-radius: 9px; border: 1px solid var(--line); background: var(--paper); color: var(--muted); cursor: pointer; padding: 0; touch-action: manipulation; }
+.seg button.small { font-size: .72rem; }
+.seg button:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
+.seg button[aria-pressed="true"] { color: var(--surface); }
+.seg button[aria-pressed="true"].s-ok   { background: var(--ok-fg);   border-color: var(--ok-fg); }
+.seg button[aria-pressed="true"].s-few  { background: var(--few-fg);  border-color: var(--few-fg); }
+.seg button[aria-pressed="true"].s-full { background: var(--full-fg); border-color: var(--full-fg); }
+.seg button[aria-pressed="true"].s-am, .seg button[aria-pressed="true"].s-pm { background: var(--half-fg); border-color: var(--half-fg); }
+.seg button[aria-pressed="true"].s-off  { background: var(--off-fg);  border-color: var(--off-fg); }
+.note { padding: 16px; font-size: .76rem; color: var(--muted); }
+
+/* アクセス状況 */
+.stats { padding: 16px max(16px, env(safe-area-inset-right, 0px)) 32px max(16px, env(safe-area-inset-left, 0px)); display: grid; gap: 16px; }
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 2px; }
+.tile .lbl { font-size: .74rem; color: var(--muted); letter-spacing: .04em; }
+.tile .num { font-size: 2rem; font-weight: 700; line-height: 1.15; letter-spacing: .01em; }
+.tile .num small { font-size: .8rem; font-weight: 400; color: var(--muted); margin-left: 3px; }
+.tile .cmp { font-size: .72rem; color: var(--muted); }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 8px; }
+.panel h2 { margin: 0; font-size: .9rem; font-weight: 700; }
+.readout { font-size: .84rem; color: var(--muted); min-height: 1.6em; }
+.readout b { color: var(--ink); font-weight: 700; }
+.chart { width: 100%; height: auto; display: block; touch-action: pan-y; }
+.chart text { fill: var(--muted); font-size: 10px; font-family: var(--font); }
+.chart .gl { stroke: var(--grid); stroke-width: 1; }
+.chart .bar { fill: var(--bar-dim); }
+.chart .bar.on { fill: var(--bar); }
+.line-share { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: .86rem; }
+.line-share dt { color: var(--muted); }
+.line-share dd { margin: 0; font-weight: 700; }
+.meter { height: 8px; border-radius: 99px; background: var(--grid); overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--bar); border-radius: 99px; }
+.fine { font-size: .74rem; color: var(--muted); line-height: 1.7; }
+table.tv { width: 100%; border-collapse: collapse; font-size: .8rem; }
+table.tv th, table.tv td { padding: 5px 4px; border-bottom: 1px solid var(--line); text-align: right; }
+table.tv th:first-child, table.tv td:first-child { text-align: left; }
+details summary { cursor: pointer; font-size: .8rem; color: var(--green); font-weight: 700; }
+.loading { padding: 40px 16px; text-align: center; color: var(--muted); font-size: .86rem; }
+@media (prefers-reduced-motion: reduce) { .save.saving::before { animation: none; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="top" id="top">
+    <div class="top-row">
+      <h1>藤原整体院　管理</h1>
+      <span class="save" id="save">保存済み</span>
+    </div>
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" id="tab-edit" aria-selected="true" aria-controls="view-edit">予約状況</button>
+      <button type="button" role="tab" id="tab-stats" aria-selected="false" aria-controls="view-stats">アクセス状況</button>
+    </div>
+  </div>
+
+  <div class="err" id="err" hidden>
+    <span id="err-msg">保存できませんでした。</span>
+    <button type="button" id="retry">再送する</button>
+  </div>
+
+  <section id="view-edit" role="tabpanel" aria-labelledby="tab-edit">
+    <div class="hint">
+      <span>変更がある日だけタップ。何もしない日は ○ のままです。</span>
+      <a id="public-link" href="#" target="_blank" rel="noopener" hidden>公開ページを見る</a>
+    </div>
+    <div id="list"></div>
+    <div class="note">今日から60日先まで表示しています。過去の日は自動で消えます。</div>
+  </section>
+
+  <section id="view-stats" role="tabpanel" aria-labelledby="tab-stats" hidden>
+    <div class="loading" id="stats-loading">読み込み中…</div>
+    <div class="stats" id="stats" hidden></div>
+  </section>
+</div>
+
+<script>
+var INITIAL = <?!= initialJson ?>;
+</script>
+<script>
+(function () {
+  'use strict';
+  var STATUS = [
+    { key: 'ok', mark: '○', label: '予約可能' },
+    { key: 'few', mark: '△', label: '残りわずか' },
+    { key: 'full', mark: '×', label: '予約満了' },
+    { key: 'am', mark: '午前', label: '午前のみ' },
+    { key: 'pm', mark: '午後', label: '午後のみ' },
+    { key: 'off', mark: '休', label: '休業日' }
+  ];
+  var WD = ['日', '月', '火', '水', '木', '金', '土'];
+  var PENDING_KEY = 'fujiwara-admin:pending:v1';
+
+  var today = INITIAL.today;
+  var serverDays = INITIAL.days || {};
+  var updatedAt = INITIAL.updatedAt;
+  var pending = loadPending();
+  var inflight = false, timer = null, lastError = '';
+
+  if (INITIAL.publicUrl) {
+    var pl = document.getElementById('public-link');
+    pl.href = INITIAL.publicUrl; pl.hidden = false;
+  }
+
+  /* ---------- 日付 ---------- */
+  function buildDays(startKey, count) {
+    var a = startKey.split('-').map(Number), base = Date.UTC(a[0], a[1] - 1, a[2]), out = [];
+    for (var i = 0; i < count; i++) {
+      var d = new Date(base + i * 864e5);
+      out.push({ key: d.toISOString().slice(0, 10), y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate(), w: d.getUTCDay(), i: i });
+    }
+    return out;
+  }
+  function hhmm(iso) {
+    if (!iso) return '';
+    return new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+  }
+
+  /* ---------- 未送信の変更（端末に保存して失わない） ---------- */
+  function loadPending() {
+    try {
+      var p = JSON.parse(localStorage.getItem(PENDING_KEY) || '{}') || {};
+      Object.keys(p).forEach(function (k) { if (k < INITIAL.today) delete p[k]; });
+      return p;
+    } catch (e) { return {}; }
+  }
+  function persist() { try { localStorage.setItem(PENDING_KEY, JSON.stringify(pending)); } catch (e) {} }
+  function hasPending() { return Object.keys(pending).length > 0; }
+  function current(k) { return pending[k] || serverDays[k] || 'ok'; }
+
+  /* ---------- 予約状況リスト ---------- */
+  function renderList() {
+    var days = buildDays(today, INITIAL.daysAhead + 1), h = '', lastM = null;
+    days.forEach(function (d) {
+      if (d.m !== lastM) { h += '<div class="month">' + d.y + '年 ' + d.m + '月</div>'; lastM = d.m; }
+      var s = current(d.key);
+      var cls = (d.w === 0 ? ' sun' : d.w === 6 ? ' sat' : '') + (s !== 'ok' ? ' changed' : '') + (pending[d.key] ? ' pending' : '');
+      h += '<div class="row' + cls + '"><div class="date tnum">' + d.m + '/' + d.d + '<span>' + WD[d.w] + '曜</span>' +
+        (d.i === 0 ? '<span class="tag">今日</span>' : '') + '</div>' +
+        '<div class="seg" role="group" aria-label="' + d.m + '月' + d.d + '日の状態">' +
+        STATUS.map(function (x) {
+          return '<button type="button" id="b-' + d.key + '-' + x.key + '" class="s-' + x.key + (x.mark.length > 1 ? ' small' : '') +
+            '" data-day="' + d.key + '" data-st="' + x.key + '" aria-pressed="' + (s === x.key) + '" aria-label="' + x.label + '">' + x.mark + '</button>';
+        }).join('') + '</div></div>';
+    });
+    document.getElementById('list').innerHTML = h;
+  }
+
+  function setSave(state) {
+    var el = document.getElementById('save');
+    el.className = 'save' + (state === 'saving' ? ' saving' : state === 'error' ? ' error' : '');
+    el.textContent = state === 'saving' ? '保存中…' : state === 'error' ? '未保存あり' :
+      (updatedAt ? '保存しました ' + hhmm(updatedAt) : '保存済み');
+    document.getElementById('err').hidden = state !== 'error';
+    if (state === 'error') document.getElementById('err-msg').textContent =
+      '保存できませんでした。' + (lastError ? '（' + lastError + '）' : '') + '入力はこの端末に残っています。通信を確認して「再送する」を押してください。';
+  }
+
+  function schedule() { clearTimeout(timer); timer = setTimeout(flush, 500); }
+
+  function flush() {
+    if (inflight || !hasPending()) return;
+    var batch = {};
+    Object.keys(pending).forEach(function (k) { batch[k] = pending[k]; });
+    inflight = true; setSave('saving');
+    google.script.run
+      .withSuccessHandler(function (res) {
+        inflight = false;
+        Object.keys(batch).forEach(function (k) { if (pending[k] === batch[k]) delete pending[k]; });
+        persist();
+        serverDays = res.days || {}; updatedAt = res.updatedAt;
+        if (res.today && res.today !== today) today = res.today;
+        renderList();
+        if (hasPending()) flush(); else setSave('ok');
+      })
+      .withFailureHandler(function (err) {
+        inflight = false;
+        lastError = (err && err.message) ? err.message : '';
+        setSave('error'); renderList();
+      })
+      .saveStatuses(batch);
+  }
+
+  document.getElementById('list').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-day]'); if (!b) return;
+    var k = b.getAttribute('data-day'), s = b.getAttribute('data-st');
+    if (current(k) === s) return;
+    pending[k] = s; persist(); renderList(); schedule();
+  });
+  document.getElementById('retry').addEventListener('click', flush);
+  window.addEventListener('online', function () { if (hasPending()) flush(); });
+  window.addEventListener('beforeunload', function (e) { if (hasPending()) { e.preventDefault(); e.returnValue = ''; } });
+
+  /* ---------- タブ ---------- */
+  var statsLoaded = false;
+  function selectTab(which) {
+    var edit = which === 'edit';
+    document.getElementById('tab-edit').setAttribute('aria-selected', edit);
+    document.getElementById('tab-stats').setAttribute('aria-selected', !edit);
+    document.getElementById('view-edit').hidden = !edit;
+    document.getElementById('view-stats').hidden = edit;
+    if (!edit && !statsLoaded) loadStats();
+  }
+  document.getElementById('tab-edit').addEventListener('click', function () { selectTab('edit'); });
+  document.getElementById('tab-stats').addEventListener('click', function () { selectTab('stats'); });
+
+  /* ---------- アクセス状況（開いたときだけ読み込む） ---------- */
+  function loadStats() {
+    var ld = document.getElementById('stats-loading');
+    ld.hidden = false; ld.textContent = '読み込み中…';
+    google.script.run
+      .withSuccessHandler(function (a) { statsLoaded = true; ld.hidden = true; renderStats(a); })
+      .withFailureHandler(function (err) {
+        ld.innerHTML = 'アクセス状況を読み込めませんでした。<br><button type="button" class="btn" id="stats-retry">もう一度読み込む</button>';
+        document.getElementById('stats-retry').addEventListener('click', loadStats);
+      })
+      .getAnalytics();
+  }
+
+  function cmp(now, prev, unit) {
+    if (!prev) return '先月の記録なし';
+    return '先月 ' + prev.toLocaleString() + unit;
+  }
+
+  function renderStats(a) {
+    var el = document.getElementById('stats');
+    var lineRate = a.monthPv ? Math.round(a.monthLinePv / a.monthPv * 100) : 0;
+    el.innerHTML =
+      '<div class="tiles">' +
+        tile('今日の閲覧数', a.todayPv, '回', '') +
+        tile('今日の訪問者', a.todayUv, '人', '推定') +
+        tile('今月の閲覧数', a.monthPv, '回', cmp(a.monthPv, a.prevMonthPv, '回')) +
+        tile('今月の訪問者', a.monthUv, '人', cmp(a.monthUv, a.prevMonthUv, '人') ) +
+      '</div>' +
+      '<div class="panel"><h2>過去30日間の閲覧数</h2><div class="readout tnum" id="readout"></div>' +
+        '<div id="chart"></div>' +
+        '<details><summary>表で見る</summary>' + table(a.series) + '</details></div>' +
+      '<div class="panel"><h2>LINE経由（今月）</h2>' +
+        '<dl class="line-share tnum"><dt>閲覧数</dt><dd>' + a.monthLinePv.toLocaleString() + ' 回（全体の ' + lineRate + '%）</dd>' +
+        '<dt>訪問者</dt><dd>' + a.monthLineUv.toLocaleString() + ' 人（推定）</dd></dl>' +
+        '<div class="meter" role="img" aria-label="LINE経由の割合 ' + lineRate + '%"><i style="width:' + lineRate + '%"></i></div></div>' +
+      '<p class="fine">訪問者数は、端末ごとに「その日・その月に初めて開いたか」だけで数えた推定値です。氏名や端末を特定できる情報は記録していません。同じ端末で10分以内に開き直した分は閲覧数に含めません。院長ご自身の閲覧を除くには、ご自分のスマートフォンで公開ページのURLの末尾に <b>?notrack=1</b> を付けて一度開いてください。</p>';
+    el.hidden = false;
+    drawChart(a.series);
+  }
+
+  function tile(lbl, n, unit, sub) {
+    return '<div class="tile"><span class="lbl">' + lbl + '</span><span class="num tnum">' + (n || 0).toLocaleString() + '<small>' + unit + '</small></span>' +
+      (sub ? '<span class="cmp">' + sub + '</span>' : '') + '</div>';
+  }
+
+  function md(k) { var a = k.split('-').map(Number); return a[1] + '/' + a[2]; }
+  function wd(k) { var a = k.split('-').map(Number); return WD[new Date(Date.UTC(a[0], a[1] - 1, a[2])).getUTCDay()]; }
+
+  function table(series) {
+    return '<table class="tv tnum"><thead><tr><th>日付</th><th>閲覧数</th><th>訪問者</th></tr></thead><tbody>' +
+      series.slice().reverse().map(function (s) {
+        return '<tr><td>' + md(s.date) + '（' + wd(s.date) + '）</td><td>' + s.pv + '</td><td>' + s.uv + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+
+  function niceMax(v) {
+    if (v <= 4) return 4;
+    var p = Math.pow(10, Math.floor(Math.log10(v))), f = v / p;
+    var n = f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10;
+    return n * p;
+  }
+
+  function drawChart(series) {
+    var W = 320, H = 170, L = 28, R = 6, T = 8, B = 22;
+    var max = niceMax(Math.max.apply(null, series.map(function (s) { return s.pv; })));
+    var n = series.length, slot = (W - L - R) / n, bw = Math.max(3, slot - 2);
+    var y = function (v) { return T + (H - T - B) * (1 - v / max); };
+    var svg = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="過去30日間の日別閲覧数の棒グラフ">';
+    [0, max / 2, max].forEach(function (v) {
+      svg += '<line class="gl" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '"/>' +
+        '<text x="' + (L - 5) + '" y="' + (y(v) + 3) + '" text-anchor="end">' + (v % 1 ? v.toFixed(1) : v) + '</text>';
+    });
+    series.forEach(function (s, i) {
+      var x = L + i * slot + (slot - bw) / 2, top = y(s.pv), base = y(0), h = base - top;
+      var r = Math.min(2, bw / 2, h);
+      if (h > 0) {
+        svg += '<path class="bar' + (i === n - 1 ? ' on' : '') + '" data-i="' + i + '" d="M' + x + ' ' + base + 'V' + (top + r) +
+          'Q' + x + ' ' + top + ' ' + (x + r) + ' ' + top + 'H' + (x + bw - r) + 'Q' + (x + bw) + ' ' + top + ' ' + (x + bw) + ' ' + (top + r) + 'V' + base + 'Z"/>';
+      }
+      if (i === 0 || i === n - 1 || i % 7 === (n - 1) % 7) {
+        svg += '<text x="' + (x + bw / 2) + '" y="' + (H - 6) + '" text-anchor="middle">' + md(s.date) + '</text>';
+      }
+      // 当たり判定（棒より広い）
+      svg += '<rect data-i="' + i + '" x="' + (L + i * slot) + '" y="' + T + '" width="' + slot + '" height="' + (H - T - B) + '" fill="transparent"/>';
+    });
+    svg += '</svg>';
+    var box = document.getElementById('chart');
+    box.innerHTML = svg;
+
+    function show(i) {
+      var s = series[i];
+      document.getElementById('readout').innerHTML = md(s.date) + '（' + wd(s.date) + '）' + (i === n - 1 ? ' 今日' : '') +
+        '　閲覧数 <b>' + s.pv + '</b> 回 ・ 訪問者 <b>' + s.uv + '</b> 人';
+      Array.prototype.forEach.call(box.querySelectorAll('.bar'), function (b) { b.classList.toggle('on', +b.getAttribute('data-i') === i); });
+    }
+    function pick(e) {
+      var t = e.target.closest('[data-i]'); if (t) show(+t.getAttribute('data-i'));
+    }
+    box.addEventListener('pointermove', pick);
+    box.addEventListener('pointerdown', pick);
+    show(n - 1);
+  }
+
+  /* ---------- 起動 ---------- */
+  function fitSticky() {
+    document.documentElement.style.setProperty('--top-h', document.getElementById('top').offsetHeight + 'px');
+  }
+  fitSticky(); window.addEventListener('resize', fitSticky);
+  renderList(); setSave('ok');
+  if (hasPending()) flush();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,492 @@
+<title>藤原整体院 予約カレンダー設計案</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: 設計書ページ。上部に3台のスマホ実機モック（操作可能）、下に表記ルール・構成・確認事項 */
+:root {
+  --paper: #F5F2EA;      /* 生成り */
+  --surface: #FFFDF8;    /* カード面 */
+  --ink: #26302A;        /* 本文 */
+  --muted: #6B736D;      /* 補足（緑寄りのグレー） */
+  --line: #E1DDD2;
+  --green: #2E5A45;      /* 深いグリーン */
+  --green-ink: #FFFDF8;
+  --green-soft: #E4ECE5;
+  --sun: #A0524E; --sat: #3F6687;
+  --ok-fg: #2E6B4A;  --ok-bg: #E3EEE5;
+  --few-fg: #8F6210; --few-bg: #F5EAD2;
+  --full-fg: #8A4848; --full-bg: #F1E2DF;
+  --half-fg: #2D5872; --half-bg: #E1EBF1;
+  --off-fg: #73746E; --off-bg: #EAE8E1;
+  --danger: #A43F38; --danger-bg: #F7E4E1;
+  --frame: #1F2421;
+  --font-display: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #191D1A; --surface: #212622; --ink: #E8E5DC; --muted: #9DA59F; --line: #343B36;
+  --green: #8DBEA0; --green-ink: #15201A; --green-soft: #26362C;
+  --sun: #D9908A; --sat: #8FB2D1;
+  --ok-fg: #9ED2B1; --ok-bg: #233629; --few-fg: #E2BC6E; --few-bg: #3A3020;
+  --full-fg: #DFA09A; --full-bg: #3D2928; --half-fg: #9FC3DA; --half-bg: #22313B;
+  --off-fg: #A6A79F; --off-bg: #2C302C; --danger: #E9877E; --danger-bg: #3E2422; --frame: #0C0E0D;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --paper: #191D1A; --surface: #212622; --ink: #E8E5DC; --muted: #9DA59F; --line: #343B36;
+  --green: #8DBEA0; --green-ink: #15201A; --green-soft: #26362C;
+  --sun: #D9908A; --sat: #8FB2D1;
+  --ok-fg: #9ED2B1; --ok-bg: #233629; --few-fg: #E2BC6E; --few-bg: #3A3020;
+  --full-fg: #DFA09A; --full-bg: #3D2928; --half-fg: #9FC3DA; --half-bg: #22313B;
+  --off-fg: #A6A79F; --off-bg: #2C302C; --danger: #E9877E; --danger-bg: #3E2422; --frame: #0C0E0D;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--paper); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.75; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 40px 80px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-wrap: balance; line-height: 1.4; margin: 0; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); letter-spacing: .04em; }
+h2 { font-size: 1.35rem; letter-spacing: .04em; }
+h3 { font-size: 1.05rem; }
+p { margin: 0; }
+.eyebrow { font-size: .78rem; letter-spacing: .14em; color: var(--green); font-weight: 700; }
+.lead { color: var(--muted); max-width: 40em; }
+header.page { display: grid; gap: 10px; margin-bottom: 36px; }
+section.block { margin-top: 64px; display: grid; gap: 20px; }
+section.block > .head { display: grid; gap: 6px; }
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* ---------- Phones ---------- */
+.phones { display: flex; flex-wrap: wrap; gap: 36px 28px; justify-content: center; align-items: flex-start; }
+.phone-col { display: grid; gap: 12px; justify-items: center; width: 340px; max-width: 100%; }
+.phone-cap { text-align: center; display: grid; gap: 2px; }
+.phone-cap b { font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; }
+.phone-cap span { font-size: .82rem; color: var(--muted); }
+.badge-rec { display: inline-block; font-size: .7rem; letter-spacing: .08em; background: var(--green); color: var(--green-ink); border-radius: 99px; padding: 1px 9px; margin-left: 6px; vertical-align: 2px; font-family: var(--font-body); font-weight: 700; }
+.phone { width: 340px; max-width: 100%; height: 700px; border-radius: 44px; background: var(--frame); padding: 10px; box-shadow: 0 30px 60px -30px rgba(20,30,25,.45); }
+.screen { height: 100%; border-radius: 35px; overflow: hidden; background: var(--paper); display: flex; flex-direction: column; position: relative; }
+.linebar { flex: none; height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 18px; font-size: .72rem; color: var(--muted); border-bottom: 1px solid var(--line); background: var(--surface); }
+.linebar .url { font-weight: 500; }
+.scroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.scroll::-webkit-scrollbar { display: none; }
+
+/* patient common */
+.p-head { padding: 22px 20px 14px; display: grid; gap: 4px; }
+.p-clinic { font-family: var(--font-display); font-size: 1.32rem; font-weight: 600; letter-spacing: .12em; color: var(--green); }
+.p-title { font-size: .82rem; letter-spacing: .2em; color: var(--muted); }
+.p-meta { margin-top: 10px; display: flex; justify-content: space-between; align-items: baseline; font-size: .74rem; color: var(--muted); }
+.p-meta strong { color: var(--ink); font-weight: 500; font-size: .86rem; }
+.legend { margin: 0 16px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 4px; font-size: .7rem; color: var(--muted); }
+.legend div { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.mk { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 4px; border-radius: 6px; font-weight: 700; font-size: .78rem; line-height: 1; }
+.s-ok   { color: var(--ok-fg);   background: var(--ok-bg); }
+.s-few  { color: var(--few-fg);  background: var(--few-bg); }
+.s-full { color: var(--full-fg); background: var(--full-bg); }
+.s-am, .s-pm { color: var(--half-fg); background: var(--half-bg); }
+.s-off  { color: var(--off-fg);  background: var(--off-bg); }
+.p-foot { padding: 18px 20px 28px; font-size: .74rem; color: var(--muted); display: grid; gap: 4px; line-height: 1.7; }
+.p-foot b { color: var(--ink); font-weight: 500; }
+
+/* patient A: grid */
+.cal { margin: 14px 12px 0; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 10px 8px 12px; }
+.cal-range { text-align: center; font-family: var(--font-display); font-size: .95rem; padding: 2px 0 8px; letter-spacing: .06em; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.dow { text-align: center; font-size: .68rem; color: var(--muted); padding-bottom: 2px; }
+.dow.sun { color: var(--sun); } .dow.sat { color: var(--sat); }
+.cell { border-radius: 9px; min-height: 58px; display: grid; grid-template-rows: auto 1fr; justify-items: center; padding: 4px 0 5px; position: relative; }
+.cell.blank { background: transparent; }
+.cell .d { font-size: .74rem; line-height: 1.2; color: var(--ink); }
+.cell .d small { display: block; font-size: .56rem; color: var(--green); font-weight: 700; letter-spacing: .02em; }
+.cell.sun .d { color: var(--sun); } .cell.sat .d { color: var(--sat); }
+.cell .st { align-self: center; font-weight: 700; font-size: 1.05rem; line-height: 1; }
+.cell .st.txt { font-size: .7rem; letter-spacing: .02em; }
+.cell.today { outline: 2px solid var(--green); outline-offset: -2px; }
+.cell.today::after { content: "今日"; position: absolute; top: -7px; left: 50%; transform: translateX(-50%); font-size: .52rem; background: var(--green); color: var(--green-ink); padding: 0 5px; border-radius: 99px; line-height: 1.5; }
+
+/* patient B: list */
+.list { margin: 14px 12px 0; display: grid; gap: 14px; }
+.list-month { font-family: var(--font-display); font-size: .95rem; letter-spacing: .06em; padding: 0 6px 4px; }
+.list-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.lrow { display: grid; grid-template-columns: 58px 1fr auto; align-items: center; gap: 8px; padding: 9px 14px; border-top: 1px solid var(--line); }
+.lrow:first-child { border-top: 0; }
+.lrow .ld { font-size: 1.05rem; font-weight: 500; }
+.lrow .ld span { font-size: .72rem; margin-left: 3px; color: var(--muted); }
+.lrow.sun .ld span { color: var(--sun); } .lrow.sat .ld span { color: var(--sat); }
+.lrow .tag-today { font-size: .62rem; background: var(--green); color: var(--green-ink); border-radius: 99px; padding: 1px 7px; justify-self: start; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 4px; border-radius: 99px; font-size: .74rem; font-weight: 500; }
+.pill .mk { background: transparent; min-width: 18px; }
+
+/* admin */
+.a-top { flex: none; background: var(--green); color: var(--green-ink); padding: 14px 16px 12px; display: grid; gap: 8px; }
+.a-top-row { display: flex; justify-content: space-between; align-items: center; }
+.a-top h4 { margin: 0; font-family: var(--font-display); font-size: 1rem; font-weight: 600; letter-spacing: .08em; }
+.a-top p { font-size: .7rem; opacity: .82; }
+.save { font-size: .7rem; border-radius: 99px; padding: 2px 10px; background: rgba(255,255,255,.16); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.save::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .8; }
+.save.saving::before { animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: .2; } }
+.a-err { flex: none; background: var(--danger-bg); color: var(--danger); font-size: .74rem; padding: 10px 14px; display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; line-height: 1.55; border-bottom: 1px solid var(--line); }
+.a-err button { font: inherit; font-weight: 700; color: var(--surface); background: var(--danger); border: 0; border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+.a-month { position: sticky; top: 0; z-index: 1; background: var(--paper); padding: 10px 16px 6px; font-family: var(--font-display); font-size: .9rem; letter-spacing: .06em; border-bottom: 1px solid var(--line); }
+.arow { display: grid; grid-template-columns: 52px 1fr; gap: 8px; align-items: center; padding: 8px 10px 8px 14px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.arow.changed { background: color-mix(in srgb, var(--surface) 70%, var(--few-bg)); }
+.arow .ad { font-size: .95rem; font-weight: 500; line-height: 1.2; position: relative; }
+.arow .ad span { display: block; font-size: .66rem; color: var(--muted); }
+.arow.sun .ad span { color: var(--sun); } .arow.sat .ad span { color: var(--sat); }
+.arow .ad .tag { display: inline-block; font-size: .56rem; color: var(--green-ink); background: var(--green); border-radius: 99px; padding: 0 5px; margin-top: 2px; }
+.arow.pending .ad::after { content: ""; position: absolute; left: -9px; top: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--danger); }
+.seg { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; }
+.seg button { font: inherit; font-size: .78rem; font-weight: 700; height: 38px; border-radius: 8px; border: 1px solid var(--line); background: var(--paper); color: var(--muted); cursor: pointer; padding: 0; }
+.seg button.small { font-size: .66rem; }
+.seg button:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
+.seg button[aria-pressed="true"].s-ok   { background: var(--ok-fg);   color: var(--surface); border-color: var(--ok-fg); }
+.seg button[aria-pressed="true"].s-few  { background: var(--few-fg);  color: var(--surface); border-color: var(--few-fg); }
+.seg button[aria-pressed="true"].s-full { background: var(--full-fg); color: var(--surface); border-color: var(--full-fg); }
+.seg button[aria-pressed="true"].s-am, .seg button[aria-pressed="true"].s-pm { background: var(--half-fg); color: var(--surface); border-color: var(--half-fg); }
+.seg button[aria-pressed="true"].s-off  { background: var(--off-fg);  color: var(--surface); border-color: var(--off-fg); }
+.seg button[aria-pressed="false"] { background: var(--paper); color: var(--muted); }
+.a-note { padding: 14px 16px 24px; font-size: .7rem; color: var(--muted); }
+
+.demo-ctl { display: flex; flex-wrap: wrap; gap: 10px 18px; justify-content: center; font-size: .84rem; color: var(--muted); margin-top: 4px; }
+.demo-ctl label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.demo-ctl button { font: inherit; font-size: .82rem; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 99px; padding: 4px 14px; cursor: pointer; }
+.demo-ctl button:focus-visible, .demo-ctl input:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+
+/* ---------- doc sections ---------- */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 22px; }
+.tbl-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: .9rem; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: .76rem; letter-spacing: .08em; color: var(--muted); font-weight: 500; }
+.arch { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: stretch; }
+.node { border: 1px solid var(--line); border-radius: 12px; padding: 16px; background: var(--surface); display: grid; gap: 6px; align-content: start; min-width: 0; }
+.node .who { font-size: .72rem; letter-spacing: .1em; color: var(--green); font-weight: 700; }
+.node ul { margin: 0; padding-left: 1.1em; font-size: .86rem; color: var(--muted); }
+.node.core { border-color: var(--green); background: var(--green-soft); }
+.flow { font-size: .8rem; color: var(--muted); text-align: center; }
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.two .card { display: grid; gap: 8px; align-content: start; }
+.two .card ul, .q ul { margin: 0; padding-left: 1.1em; color: var(--muted); font-size: .9rem; }
+.q { display: grid; gap: 12px; }
+.q .card { display: grid; gap: 6px; }
+.q .card p { color: var(--muted); font-size: .9rem; }
+.q .card .rec { color: var(--green); font-weight: 700; font-size: .86rem; }
+code { font-size: .86em; background: var(--green-soft); padding: 1px 6px; border-radius: 5px; }
+@media (max-width: 820px) { .arch, .two { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .save.saving::before { animation: none; } }
+</style>
+
+<div class="wrap">
+  <header class="page">
+    <div class="eyebrow">STEP 1 ・ デザイン案とシステム構成</div>
+    <h1>藤原整体院　予約状況カレンダー</h1>
+    <p class="lead">患者さん向けの公開画面2案と、院長用の管理画面です。下の3台はすべて操作できます。管理画面で状態をタップすると、左の公開画面にそのまま反映されます。日付は日本時間の今日から30日先まで、毎日自動で進みます（表示は仮データです）。</p>
+  </header>
+
+  <div class="phones">
+    <div class="phone-col">
+      <div class="phone-cap"><b>公開画面 A　カレンダー型<span class="badge-rec">おすすめ</span></b><span>1画面で約1か月を見渡せる</span></div>
+      <div class="phone"><div class="screen">
+        <div class="linebar"><span>✕</span><span class="url">予約状況｜藤原整体院</span><span>⋯</span></div>
+        <div class="scroll">
+          <div class="p-head">
+            <div class="p-clinic">藤原整体院</div>
+            <div class="p-title">ご予約の空き状況</div>
+            <div class="p-meta"><span>表示期間 <strong class="tnum js-range"></strong></span><span class="js-updated"></span></div>
+          </div>
+          <div class="legend js-legend"></div>
+          <div class="cal">
+            <div class="cal-grid js-grid"></div>
+          </div>
+          <div class="p-foot">
+            <p>△ は残りわずかです。お早めにご連絡ください。</p>
+            <p><b>ご予約は LINE のトーク、またはお電話で承ります。</b></p>
+          </div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="phone-col">
+      <div class="phone-cap"><b>公開画面 B　リスト型</b><span>文字が大きく、ご年配の方にも読みやすい</span></div>
+      <div class="phone"><div class="screen">
+        <div class="linebar"><span>✕</span><span class="url">予約状況｜藤原整体院</span><span>⋯</span></div>
+        <div class="scroll">
+          <div class="p-head">
+            <div class="p-clinic">藤原整体院</div>
+            <div class="p-title">ご予約の空き状況</div>
+            <div class="p-meta"><span>表示期間 <strong class="tnum js-range"></strong></span><span class="js-updated"></span></div>
+          </div>
+          <div class="list js-list"></div>
+          <div class="p-foot">
+            <p><b>ご予約は LINE のトーク、またはお電話で承ります。</b></p>
+          </div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="phone-col">
+      <div class="phone-cap"><b>管理画面（院長専用）</b><span>タップした瞬間に自動保存</span></div>
+      <div class="phone"><div class="screen">
+        <div class="a-top">
+          <div class="a-top-row"><h4>予約状況の編集</h4><span class="save js-save">保存済み</span></div>
+          <p>変更がある日だけタップしてください。何もしない日は ○ のままです。</p>
+        </div>
+        <div class="a-err js-err" hidden>
+          <span>保存できませんでした。通信を確認して再送してください。入力はこの端末に残っています。</span>
+          <button type="button" id="retry">再送する</button>
+        </div>
+        <div class="scroll js-admin"></div>
+      </div></div>
+      <div class="demo-ctl">
+        <label><input type="checkbox" id="failsim"> 保存失敗を試す</label>
+        <button type="button" id="reset">仮データに戻す</button>
+      </div>
+    </div>
+  </div>
+
+  <section class="block">
+    <div class="head">
+      <div class="eyebrow">表記ルール</div>
+      <h2>予約状況の種類</h2>
+      <p class="lead">色だけに頼らず、記号と文字を必ず併記します。新しく増えた日は自動で ○ になり、院長は変更がある日だけ操作します。</p>
+    </div>
+    <div class="card tbl-wrap">
+      <table>
+        <thead><tr><th>記号</th><th>公開画面での意味</th><th>使う場面</th></tr></thead>
+        <tbody class="js-status-table"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="head">
+      <div class="eyebrow">システム構成</div>
+      <h2>Google Apps Script ＋ スプレッドシート（非公開）</h2>
+      <p class="lead">維持費は0円です。サーバーの管理もいりません。スプレッドシートは院長の Google ドライブに置く内部データとして使い、患者さんには見せません。</p>
+    </div>
+    <div class="arch">
+      <div class="node">
+        <div class="who">患者さん</div>
+        <h3>公開ページ</h3>
+        <ul>
+          <li>LINE のリンクから開く</li>
+          <li>自作の HTML/CSS/JS（無料の静的ホスティング：GitHub Pages など）</li>
+          <li>日付は端末側で日本時間から自動計算</li>
+          <li>前回の表示を端末に保存し、通信が遅くても即表示</li>
+        </ul>
+      </div>
+      <div class="node core">
+        <div class="who">中心</div>
+        <h3>Google Apps Script</h3>
+        <ul>
+          <li>閲覧用 API：○以外の日だけを返す（読み取り専用）</li>
+          <li>管理画面：院長の Google アカウントでのみ開ける</li>
+          <li>結果を数分キャッシュして高速化</li>
+        </ul>
+      </div>
+      <div class="node">
+        <div class="who">院長</div>
+        <h3>スプレッドシート（非公開）</h3>
+        <ul>
+          <li>列は「日付」「状態」の2つだけ</li>
+          <li>○以外の日だけ記録（○の日は行がない）</li>
+          <li>過去の行は自動で削除</li>
+          <li>個人情報は一切保存しない</li>
+        </ul>
+      </div>
+    </div>
+    <p class="flow">公開ページ ←（状態を読む）← Apps Script →（書き込み）→ スプレッドシート ← 管理画面（院長のみ）</p>
+
+    <div class="two">
+      <div class="card">
+        <h3>日付が自動で進む仕組み</h3>
+        <ul>
+          <li>日付は保存せず、開くたびに「日本時間の今日」から31日分（今日〜30日後）を計算します。</li>
+          <li>保存するのは「○以外の日の状態」だけです。日付の生成と予約状況のデータを分けています。</li>
+          <li>月末・年末・閏年は暦の計算に任せるので、特別な処理は不要です。</li>
+          <li>端末の時計が海外時間でも、日本時間で判定します。</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>管理画面の守り方</h3>
+        <ul>
+          <li>Apps Script の「自分だけがアクセス可能」で公開し、院長の Google アカウントでログインしたときだけ開けます。パスワード管理は不要です。</li>
+          <li>公開ページ側には編集機能を一切置きません。</li>
+          <li>保存はタップごとに即時。失敗したら赤い帯で知らせ、入力は端末に残して「再送する」で送り直せます。</li>
+          <li>管理画面は60日先まで表示し、先の休業日も前もって入れられます。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="head">
+      <div class="eyebrow">ご確認ください</div>
+      <h2>STEP 2 に進む前に決めたいこと</h2>
+    </div>
+    <div class="q">
+      <div class="card">
+        <h3>1. 公開画面は A（カレンダー型）と B（リスト型）のどちらにしますか</h3>
+        <p>A は1画面で全体を見渡せます。B は1日ずつ文字で読めます。現在のスプレッドシートに近いのは A です。</p>
+        <p class="rec">おすすめ：A。患者さんが「空いている日」を一目で探せます。</p>
+      </div>
+      <div class="card">
+        <h3>2. 定休日はありますか</h3>
+        <p>毎週決まった曜日が休みなら、その曜日を最初から「休」にする設定を加えます。毎週「休」を入力する手間がなくなります。</p>
+        <p class="rec">おすすめ：定休日の曜日だけ一度設定し、あとは自動。</p>
+      </div>
+      <div class="card">
+        <h3>3. ページ下部に載せる連絡先・受付時間</h3>
+        <p>電話番号や受付時間を載せる場合は、正しい内容をお知らせください。載せない場合は「LINE のトークでご予約ください」の一文だけにします。</p>
+      </div>
+      <div class="card">
+        <h3>4. Google アカウント</h3>
+        <p>院長が普段お使いの Google アカウントで Apps Script とスプレッドシートを作ります。今の予約カレンダーと同じアカウントで問題ないか確認させてください。</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var STATUS = [
+    { key: "ok",   mark: "○",   label: "予約可能",   use: "初期値。何も入力しない日はすべてこれ" },
+    { key: "few",  mark: "△",   label: "残りわずか", use: "空きが少なくなってきた日" },
+    { key: "full", mark: "×",   label: "予約満了",   use: "予約が埋まった日" },
+    { key: "am",   mark: "午前", label: "午前のみ",   use: "午前だけ受け付けられる日" },
+    { key: "pm",   mark: "午後", label: "午後のみ",   use: "午後だけ受け付けられる日" },
+    { key: "off",  mark: "休",   label: "休業日",     use: "定休日・臨時休業" }
+  ];
+  var BY = {}; STATUS.forEach(function (s) { BY[s.key] = s; });
+  var WD = ["日", "月", "火", "水", "木", "金", "土"];
+  var PUBLIC_DAYS = 30, ADMIN_DAYS = 60;
+
+  // 日本時間の「今日」
+  function todayJST() {
+    var p = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    var a = p.split("-").map(Number);
+    return Date.UTC(a[0], a[1] - 1, a[2]);
+  }
+  function days(n) {
+    var t0 = todayJST(), out = [];
+    for (var i = 0; i <= n; i++) {
+      var d = new Date(t0 + i * 864e5);
+      out.push({ key: d.toISOString().slice(0, 10), y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate(), w: d.getUTCDay(), i: i });
+    }
+    return out;
+  }
+  function seed() {
+    var o = {}, ds = days(ADMIN_DAYS);
+    [[0, "few"], [1, "full"], [3, "am"], [6, "few"], [9, "pm"], [12, "full"], [13, "full"], [17, "off"], [22, "am"], [27, "few"], [41, "off"]]
+      .forEach(function (p) { o[ds[p[0]].key] = p[1]; });
+    return o;
+  }
+  var overrides = seed();
+  var pending = {};
+  var updatedAt = new Date();
+
+  function st(day) { return overrides[day.key] || "ok"; }
+  function wcls(w) { return w === 0 ? "sun" : w === 6 ? "sat" : ""; }
+  function hhmm(d) { return new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(d); }
+  function $all(s) { return Array.prototype.slice.call(document.querySelectorAll(s)); }
+
+  function renderLegend() {
+    $all(".js-legend").forEach(function (el) {
+      el.innerHTML = STATUS.map(function (s) {
+        return '<div><span class="mk s-' + s.key + '">' + s.mark + '</span>' + s.label + '</div>';
+      }).join("");
+    });
+    document.querySelector(".js-status-table").innerHTML = STATUS.map(function (s) {
+      return '<tr><td><span class="mk s-' + s.key + '">' + s.mark + '</span></td><td>' + s.label + '</td><td>' + s.use + '</td></tr>';
+    }).join("");
+  }
+
+  function renderPublic() {
+    var ds = days(PUBLIC_DAYS), first = ds[0], last = ds[ds.length - 1];
+    $all(".js-range").forEach(function (el) { el.textContent = first.m + "/" + first.d + " 〜 " + last.m + "/" + last.d; });
+    $all(".js-updated").forEach(function (el) { el.textContent = "更新 " + hhmm(updatedAt); });
+
+    // A: grid
+    var h = WD.map(function (w, i) { return '<div class="dow ' + wcls(i) + '">' + w + '</div>'; }).join("");
+    for (var b = 0; b < first.w; b++) h += '<div class="cell blank"></div>';
+    ds.forEach(function (d, idx) {
+      var s = st(d), txt = s === "am" || s === "pm";
+      var monthMark = (idx === 0 || d.d === 1) ? '<small>' + d.m + '月</small>' : '';
+      h += '<div class="cell s-' + s + ' ' + wcls(d.w) + (idx === 0 ? ' today' : '') + '" title="' + d.m + '月' + d.d + '日 ' + BY[s].label + '">' +
+        '<span class="d tnum">' + monthMark + d.d + '</span><span class="st' + (txt ? ' txt' : '') + '">' + BY[s].mark + '</span></div>';
+    });
+    var tail = (7 - ((first.w + ds.length) % 7)) % 7;
+    for (var t = 0; t < tail; t++) h += '<div class="cell blank"></div>';
+    document.querySelector(".js-grid").innerHTML = h;
+
+    // B: list
+    var groups = [], cur = null;
+    ds.forEach(function (d) {
+      if (!cur || cur.m !== d.m) { cur = { y: d.y, m: d.m, items: [] }; groups.push(cur); }
+      cur.items.push(d);
+    });
+    document.querySelector(".js-list").innerHTML = groups.map(function (g) {
+      return '<div><div class="list-month">' + g.y + '年 ' + g.m + '月</div><div class="list-card">' +
+        g.items.map(function (d) {
+          var s = st(d);
+          return '<div class="lrow ' + wcls(d.w) + '"><div class="ld tnum">' + d.m + '/' + d.d + '<span>' + WD[d.w] + '</span></div>' +
+            (d.i === 0 ? '<span class="tag-today">今日</span>' : '<span></span>') +
+            '<span class="pill s-' + s + '"><span class="mk">' + BY[s].mark + '</span>' + BY[s].label + '</span></div>';
+        }).join("") + '</div></div>';
+    }).join("");
+  }
+
+  function renderAdmin() {
+    var ds = days(ADMIN_DAYS), h = "", lastM = null;
+    ds.forEach(function (d) {
+      if (d.m !== lastM) { h += '<div class="a-month">' + d.y + '年 ' + d.m + '月</div>'; lastM = d.m; }
+      var s = st(d);
+      h += '<div class="arow ' + wcls(d.w) + (s !== "ok" ? ' changed' : '') + (pending[d.key] ? ' pending' : '') + '">' +
+        '<div class="ad tnum">' + d.m + '/' + d.d + '<span>' + WD[d.w] + '曜' + '</span>' + (d.i === 0 ? '<span class="tag">今日</span>' : '') + '</div>' +
+        '<div class="seg" role="group" aria-label="' + d.m + '月' + d.d + '日の状態">' +
+        STATUS.map(function (x) {
+          return '<button type="button" id="b-' + d.key + '-' + x.key + '" class="s-' + x.key + (x.mark.length > 1 ? ' small' : '') + '" data-day="' + d.key + '" data-st="' + x.key + '" aria-pressed="' + (s === x.key) + '" title="' + x.label + '">' + x.mark + '</button>';
+        }).join("") + '</div></div>';
+    });
+    h += '<div class="a-note">表示は今日から60日先まで。過去の日は自動で消えます。</div>';
+    var sc = document.querySelector(".js-admin"), top = sc.scrollTop;
+    sc.innerHTML = h; sc.scrollTop = top;
+  }
+
+  var saveEl = document.querySelector(".js-save"), errEl = document.querySelector(".js-err"), timer = null;
+  function setSave(state) {
+    saveEl.classList.toggle("saving", state === "saving");
+    saveEl.textContent = state === "saving" ? "保存中…" : state === "error" ? "未保存あり" : "保存しました " + hhmm(updatedAt).split(" ").pop();
+    errEl.hidden = state !== "error";
+  }
+  function flush() {
+    setSave("saving");
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      if (document.getElementById("failsim").checked) { setSave("error"); renderAdmin(); return; }
+      pending = {}; updatedAt = new Date();
+      setSave("ok"); renderAdmin(); renderPublic();
+    }, 700);
+  }
+
+  document.querySelector(".js-admin").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-day]"); if (!b) return;
+    var k = b.getAttribute("data-day"), s = b.getAttribute("data-st");
+    if (s === "ok") delete overrides[k]; else overrides[k] = s;
+    pending[k] = true;
+    renderAdmin();
+    flush();
+  });
+  document.getElementById("retry").addEventListener("click", function () {
+    document.getElementById("failsim").checked = false; flush();
+  });
+  document.getElementById("reset").addEventListener("click", function () {
+    overrides = seed(); pending = {}; updatedAt = new Date();
+    setSave("ok"); renderAdmin(); renderPublic();
+  });
+
+  renderLegend(); renderPublic(); renderAdmin(); setSave("ok");
+})();
+</script>
